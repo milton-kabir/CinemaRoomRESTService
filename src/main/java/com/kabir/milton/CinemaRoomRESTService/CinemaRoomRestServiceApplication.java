@@ -4,12 +4,9 @@ import jdk.swing.interop.SwingInterOpUtils;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.context.request.WebRequest;
 
-import javax.servlet.http.HttpServletResponse;
 import java.util.*;
 
 @SpringBootApplication
@@ -20,217 +17,140 @@ public class CinemaRoomRestServiceApplication {
     }
 
 }
-class Seats {
 
-    private int total_rows;
-    private int total_columns;
-    private List<AvailableSeats> available_seats;
-
-    public Seats(int total_rows, int total_columns, List<AvailableSeats> available_seats) {
-        this.total_rows = total_rows;
-        this.total_columns = total_columns;
-        this.available_seats = available_seats;
-    }
-
-    public Seats() {
-    }
-
-    public int getTotal_rows() {
-        return total_rows;
-    }
-
-    public void setTotal_rows(int total_rows) {
-        this.total_rows = total_rows;
-    }
-
-    public int getTotal_columns() {
-        return total_columns;
-    }
-
-    public void setTotal_columns(int total_columns) {
-        this.total_columns = total_columns;
-    }
-
-    public List<AvailableSeats> getAvailable_seats() {
-        return available_seats;
-    }
-
-    public void setAvailable_seats(List<AvailableSeats> available_seats) {
-        this.available_seats = available_seats;
-    }
-}
-
-class AvailableSeats {
-
+class Seat {
     private int row;
     private int column;
-    private int price;
 
-    public AvailableSeats() {
+    public Seat() {
     }
 
-    public AvailableSeats(int row, int column, int price) {
+    public Seat(int row, int column) {
         this.row = row;
         this.column = column;
-        this.price = price;
     }
 
-    public int getPrice() {
-        return price;
-    }
-
-    public void setPrice(int price) {
-        this.price = price;
-    }
-
-    public int getRow() {
+    public int getrow() {
         return row;
     }
 
-    public void setRow(int row) {
-        this.row = row;
-    }
-
-    public int getColumn() {
+    public int getcolumn() {
         return column;
     }
 
-    public void setColumn(int column) {
-        this.column = column;
-    }
-}
-
-class Purchase {
-
-    private int row;
-    private int column;
-    private int price;
-    //private String message;
-
-
-    @Override
-    public String toString() {
-        return "{" +
-                "\"row\":" + row +
-                ", \"column\":" + column +
-                ", \"price\":" + price +
-                '}';
+    public int getprice() {
+        return row <= 4 ? 10 : 8;
     }
 
-    public int getRow() {
-        return row;
-    }
-
-    public void setRow(int row) {
+    public void setrow(int row) {
         this.row = row;
     }
 
-    public int getColumn() {
-        return column;
-    }
-
-    public void setColumn(int column) {
+    public void setcolumn(int column) {
         this.column = column;
     }
-
-    public int getPrice() {
-        return price;
-    }
-
-    public void setPrice(int price) {
-        this.price = price;
-    }
-
-    public Purchase(int row, int column, int price) {
-        this.row = row;
-        this.column = column;
-        this.price = price;
-    }
-
-    public Purchase() {
-    }
 }
 
-class SeatsExceptions {
+class SeatsInfo {
+    private final int totalRows;
+    private final int totalColumns;
+    private final boolean[][] seats; // true if available
 
-    private String error;
-
-    public String getError() {
-        return error;
-    }
-
-    public void setError(String error) {
-        this.error = error;
-    }
-
-    public SeatsExceptions() {
-    }
-
-    public SeatsExceptions(String error) {
-        super();
-        this.error = error;
-    }
-}
-
-
-@ControllerAdvice
-@RestController
-class CustomizedResponseEntityExceptionHandler {
-
-    @ExceptionHandler(SeatNotFoundException.class)
-    public final ResponseEntity<SeatsExceptions> handleNotFoundException(SeatNotFoundException ex, WebRequest request) {
-        SeatsExceptions exceptionResponse = new SeatsExceptions(ex.getMessage());
-        return new ResponseEntity<SeatsExceptions>(exceptionResponse, HttpStatus.BAD_REQUEST);
-    }
-
-}
-
-@RestController
-class AvailableSeatsController {
-    public static List<AvailableSeats> list = new ArrayList<>();
-
-    static {
-        for (int i = 1; i <= 9; i++) {
-            for (int j = 1; j <= 9; j++) {
-                list.add(new AvailableSeats(i, j, i <= 4 ? 10 : 8));
+    public SeatsInfo() {
+        totalRows = 9;
+        totalColumns = 9;
+        seats = new boolean[totalRows][];
+        for (int i = 0; i < totalRows; i++) {
+            seats[i] = new boolean[totalColumns];
+            for (int j = 0; j < totalColumns; j++) {
+                seats[i][j] = true;
             }
         }
     }
 
-    @GetMapping("/seats")
-    public Seats availableSeats() {
-        Seats capacity = new Seats();
-        capacity.setTotal_rows(9);
-        capacity.setTotal_columns(9);
-        capacity.setAvailable_seats(list);
-        return capacity;
+    public int gettotal_rows() {
+        return totalRows;
     }
 
-    @PostMapping(value = "/purchase", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Purchase purchaseTicket(@RequestBody AvailableSeats availableSeats, HttpServletResponse response) {
-        if (availableSeats.getRow() > 9 || availableSeats.getRow() < 0
-                || availableSeats.getColumn() > 9 || availableSeats.getColumn() < 0) {
-            throw new SeatNotFoundException("The number of a row or a column is out of bounds!");
-        }
-        Optional<AvailableSeats> seat = list.stream()
-                .filter(x -> x.getRow() == availableSeats.getRow() && x.getColumn() == availableSeats.getColumn())
-                .findAny();
-        if (seat.isPresent()) {
-            //sell ticket
-            Purchase purchase = new Purchase(seat.get().getRow(), seat.get().getColumn(), seat.get().getPrice());
-            list.remove(seat.get());
-            return purchase;
-        } else {
-            throw new SeatNotFoundException("The ticket has been already purchased!");
-        }
+    public int gettotal_columns() {
+        return totalColumns;
     }
 
+    public List<Seat> getavailable_seats() {
+        List<Seat> result = new ArrayList<>();
+        for (int i = 0; i < totalRows; i++) {
+            for (int j = 0; j < totalColumns; j++) {
+                if (seats[i][j]) result.add(new Seat(i + 1, j + 1));
+            }
+        }
+        return result;
+    }
+
+    public int calcTotalSeats() {
+        return totalRows * totalColumns;
+    }
+
+    public boolean isInBounds(int row, int column) {
+        return row >= 0 && row < totalRows && column >= 0 && column < totalColumns;
+    }
+
+    public boolean isAvailable(int row, int column) {
+        return seats[row][column];
+    }
+
+    public void purchaseSeat(int row, int column) {
+        seats[row][column] = false;
+    }
+
+    public void returnSeat(int row, int column) {
+        seats[row][column] = true;
+    }
 }
 
-@ResponseStatus(HttpStatus.NOT_FOUND)
-class SeatNotFoundException extends RuntimeException{
 
-    public SeatNotFoundException(String message) {
-        super(message);
+@RestController
+class SeatsController {
+    private final HashMap<String, Seat> purchases = new HashMap<>();
+    private final SeatsInfo seatsInfo;
+
+    public SeatsController() {
+        seatsInfo = new SeatsInfo();
+    }
+
+    @GetMapping("/seats")
+    public SeatsInfo GetSeatsInfo() {
+        return seatsInfo;
+    }
+
+    @PostMapping("/purchase")
+    public Object postPurchase(@RequestBody Seat seat) {
+        int row = seat.getrow();
+        int column = seat.getcolumn();
+
+        if (!seatsInfo.isInBounds(row, column)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "The number of a row or a column is out of bounds!"));
+        }
+
+        if (!seatsInfo.isAvailable(row, column)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "The ticket has been already purchased!"));
+        }
+
+        UUID uuid = UUID.randomUUID();
+        String token = uuid.toString();
+        purchases.put(token, seat);
+        seatsInfo.purchaseSeat(row, column);
+        return Map.of("token", token, "ticket", seat);
+    }
+
+    @PostMapping("/return")
+    public Object postReturn(@RequestBody Map<String, String> map) {
+        String token = map.get("token");
+        Seat seat = purchases.remove(token);
+        if (seat == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Wrong token!"));
+        }
+
+        seatsInfo.returnSeat(seat.getrow(), seat.getcolumn());
+        return Map.of("returned_ticket", seat);
     }
 }
