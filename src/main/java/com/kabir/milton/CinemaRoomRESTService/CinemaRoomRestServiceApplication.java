@@ -1,6 +1,5 @@
 package com.kabir.milton.CinemaRoomRESTService;
 
-import jdk.swing.interop.SwingInterOpUtils;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.http.HttpStatus;
@@ -30,23 +29,23 @@ class Seat {
         this.column = column;
     }
 
-    public int getrow() {
+    public int getRow() {
         return row;
     }
 
-    public int getcolumn() {
+    public int getColumn() {
         return column;
     }
 
-    public int getprice() {
+    public int getPrice() {
         return row <= 4 ? 10 : 8;
     }
 
-    public void setrow(int row) {
+    public void setRow(int row) {
         this.row = row;
     }
 
-    public void setcolumn(int column) {
+    public void setColumn(int column) {
         this.column = column;
     }
 }
@@ -54,7 +53,7 @@ class Seat {
 class SeatsInfo {
     private final int totalRows;
     private final int totalColumns;
-    private final boolean[][] seats; // true if available
+    private final boolean[][] seats;
 
     public SeatsInfo() {
         totalRows = 9;
@@ -68,15 +67,15 @@ class SeatsInfo {
         }
     }
 
-    public int gettotal_rows() {
+    public int getTotalRows() {
         return totalRows;
     }
 
-    public int gettotal_columns() {
+    public int getTotalColumns() {
         return totalColumns;
     }
 
-    public List<Seat> getavailable_seats() {
+    public List<Seat> getAvailableSeats() {
         List<Seat> result = new ArrayList<>();
         for (int i = 0; i < totalRows; i++) {
             for (int j = 0; j < totalColumns; j++) {
@@ -124,17 +123,14 @@ class SeatsController {
 
     @PostMapping("/purchase")
     public Object postPurchase(@RequestBody Seat seat) {
-        int row = seat.getrow();
-        int column = seat.getcolumn();
-
+        int row = seat.getRow();
+        int column = seat.getColumn();
         if (!seatsInfo.isInBounds(row, column)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "The number of a row or a column is out of bounds!"));
         }
-
         if (!seatsInfo.isAvailable(row, column)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "The ticket has been already purchased!"));
         }
-
         UUID uuid = UUID.randomUUID();
         String token = uuid.toString();
         purchases.put(token, seat);
@@ -149,27 +145,22 @@ class SeatsController {
         if (seat == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Wrong token!"));
         }
-
-        seatsInfo.returnSeat(seat.getrow(), seat.getcolumn());
+        seatsInfo.returnSeat(seat.getRow(), seat.getColumn());
         return Map.of("returned_ticket", seat);
     }
 
     @PostMapping("/stats")
     public Object postStats(@RequestParam(required = false) String password) {
         final String correctPassword = "super_secret";
-
         if (!correctPassword.equals(password)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "The password is wrong!"));
         }
-
         int income = 0;
         int sold = 0;
-
         for (Seat seat : purchases.values()) {
-            income += seat.getprice();
+            income += seat.getPrice();
             sold++;
         }
-
         return Map.of("current_income", income,
                 "number_of_available_seats", seatsInfo.calcTotalSeats() - sold,
                 "number_of_purchased_tickets", sold);
