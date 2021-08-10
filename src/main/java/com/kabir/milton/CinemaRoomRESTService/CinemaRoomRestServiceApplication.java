@@ -153,4 +153,25 @@ class SeatsController {
         seatsInfo.returnSeat(seat.getrow(), seat.getcolumn());
         return Map.of("returned_ticket", seat);
     }
+
+    @PostMapping("/stats")
+    public Object postStats(@RequestParam(required = false) String password) {
+        final String correctPassword = "super_secret";
+
+        if (!correctPassword.equals(password)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "The password is wrong!"));
+        }
+
+        int income = 0;
+        int sold = 0;
+
+        for (Seat seat : purchases.values()) {
+            income += seat.getprice();
+            sold++;
+        }
+
+        return Map.of("current_income", income,
+                "number_of_available_seats", seatsInfo.calcTotalSeats() - sold,
+                "number_of_purchased_tickets", sold);
+    }
 }
